@@ -160,7 +160,10 @@
 }
 .fdiff-file-btn:hover { border-color: var(--dsw-alias-brand-primary); color: var(--dsw-alias-brand-primary); }
 .fdiff-file-meta {
-  margin-left: auto; flex: none; font-size: 11px; color: var(--dsw-alias-label-secondary);
+  margin-left: auto; flex: none; display: flex; gap: 6px; align-items: center;
+  font-size: 11px; color: var(--dsw-alias-label-secondary);
 }
+.fdiff-file-meta .add { color: var(--dsw-alias-state-success-primary); }
+.fdiff-file-meta .del { color: var(--dsw-alias-state-error-primary); }
 .fdiff-back { font: inherit; cursor: pointer; align-self: flex-start; border: none; background: transparent; color: var(--dsw-alias-label-secondary); }
 .fdiff-back:hover { color: var(--dsw-alias-brand-primary); }
