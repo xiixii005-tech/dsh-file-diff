@@ -24,14 +24,41 @@ DSH Web 的修改文件总览插件：在每轮会话末尾展示「修改 N 个
 
 ```
 package/
-├── package.json          # name + dsh.client 声明 + exports["./client"]
+├── package.json              # name + dsh.client 声明 + exports["./client"] + scripts.build
+├── scripts/
+│   └── build-client.mjs      # 构建：lib/styles.css + lib/client.template.js → lib/client.js
 └── lib/
-    ├── client.js         # 浏览器 half（__ModuleLoader__.load 格式，与 ui-deliverables 同构）
-    ├── index.js          # node half 占位（纯客户端插件，host 逻辑为空）
-    └── types/            # 类型占位
+    ├── styles.css            # ★ 样式唯一源（手动调整这里，纯 CSS 无需转义）
+    ├── client.template.js    # ★ 应用逻辑模板（含 __PLUGIN_CSS__ 占位）
+    ├── client.js             # 部署产物（GENERATED，由 npm run build 生成，勿手改）
+    ├── index.js              # node half 占位（纯客户端插件，host 逻辑为空）
+    └── types/                # 类型占位
 ```
 
-`lib/client.js` 已验证：`node` 模拟 `__ModuleLoader__.load` 执行成功，工厂返回含 `apply` 的插件对象，`apply` 内 `ctx.get('uiConversation')` / `ctx.get('slots')` 在缺失时安全降级。
+`lib/client.js` 由 `npm run build` 从 `lib/styles.css` + `lib/client.template.js` 生成；产物保持 `__ModuleLoader__.load({ id: "dsh-file-diff" })` 格式，与 ui-deliverables 同构，`apply` 内 `ctx.get('uiConversation')` / `ctx.get('slots')` 在缺失时安全降级。
+
+## 手动调整样式（改样式工作流）
+
+样式**唯一源**是 `lib/styles.css`（纯 CSS，直接编辑，无需转义）。改完运行：
+
+```sh
+npm run build     # 重新生成 lib/client.js
+```
+
+- `link:` 部署（推荐）：junction 直连工作区，构建后**重启 web 即生效**，无需重装依赖。
+- `file:` 部署：pnpm 在安装时快照副本，构建后需 `pnpm install --force` 重新同步再重启。
+
+当前主要配色在 `lib/styles.css` 中：
+
+| 位置 | 选择器 | 值 |
+| --- | --- | --- |
+| 字符串 token | `.fdiff-tok-string` | `#2d7747` |
+| 数字 token | `.fdiff-tok-number` | `#ad7311` |
+| diff 抽屉背景 | `.fdiff-panel` | `#ffffff` |
+| 增/删行底色 | `.fdiff-add td` / `.fdiff-del td` | `color-mix(...)` |
+| 关键字色 | `.fdiff-tok-keyword` | `var(--dsw-alias-brand-primary)` |
+
+> 不要直接改 `lib/client.js`（GENERATED，会被下次 build 覆盖）；调整逻辑改 `lib/client.template.js`。
 
 ## 工作原理
 
@@ -45,16 +72,12 @@ package/
 
 ## 标准方案：以动态 Cordis 插件加到当前 Web
 
-在 DSH 会话中可用动态 Cordis 插件直接挂载同一功能（推荐做法），无需改 profile、无需重启：
+在 DSH 会话中可用动态 Cordis 插件直接挂载同一功能（如本会话的 `fdiff-1`，pkg-2），无需改 profile、无需重启。动态插件逻辑与 `lib/client.template.js` 一致，仅按动态插件环境做标准适配：
 
-```js
-// 参考实现见 docs/dynamic-plugin.client.js
-// 要点（动态插件环境下的标准写法）：
-//   - 直接 return { apply(ctx) { ... } }，不用 __ModuleLoader__ 包装
-//   - React 由环境注入（React.createElement），styles.insert(css) 注入样式
-//   - 不引用 window / document（拖拽改宽用 Pointer Capture 方案）
-//   - 用 ctx.get('uiConversation') / ctx.get('slots') 并做缺失降级
-```
+- 直接 `return { apply(ctx) { ... } }`，不用 `__ModuleLoader__` 包装
+- React 由环境注入（`React.createElement`），`styles.insert(css)` 注入样式
+- 不引用 `window` / `document`（拖拽改宽用 Pointer Capture 方案）
+- 用 `ctx.get('uiConversation')` / `ctx.get('slots')` 并做缺失降级
 
 动态插件随进程存活，`cordis_stop` / `cordis_undefine` 即移除，适合开发、验证、临时演示。
 
@@ -78,8 +101,11 @@ package/
 profile 目录解析，跨盘建议写绝对路径，注意用正斜杠）：
 
 ```json
-"dsh-file-diff": "file:D:/works/dsh/dsh-file-diff"
+"dsh-file-diff": "file:./dsh-file-diff"
 ```
+
+> 想「改完 `npm run build` 即生效、无需重装」？把 `file:` 换成 `link:` 即可
+> （pnpm 建 junction 直连工作区，见「手动调整样式」一节）。`file:` 跨盘是安装时快照，需 `pnpm install --force` 重新同步。
 
 然后在该目录执行：
 
