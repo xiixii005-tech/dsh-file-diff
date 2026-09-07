@@ -1,3 +1,3 @@
-/** Client-half types for the File Diff Timeline plugin. */
+/** Client-half types for the File Diff Overview (filediff) plugin. */
 export declare const inject: string[]
 export declare function apply(ctx: unknown): void

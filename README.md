@@ -1,6 +1,23 @@
-# File Diff Timeline — 正式客户端包 + 部署说明
+# dsh-file-diff — File Diff Overview（文件修改总览）
 
-本目录是把动态插件 `fdiff-1` 整理成的**正式客户端插件包**（`@deepseek-ai/dsh-client-ui-file-diff-timeline`），用于让它在 **dsh web 每次启动时自动加载**，无需每次手动 `cordis_run`。
+DSH Web 的修改文件总览插件：在每轮会话末尾展示「修改 N 个文件」行（文件 chip 可点开 diff 抽屉），在会话头部提供「修改记录」按钮（会话级文件修改总览）。
+
+## 命名（统一）
+
+本包所有标识符统一为 `filediff` / `fdiff-` 体系：
+
+| 项 | 值 |
+| --- | --- |
+| 功能名 | File Diff Overview（文件修改总览） |
+| 包名 | `dsh-file-diff` |
+| 模块/入口 id | `filediff-overview` |
+| 会话节点 kind / turn 数据 key | `filediff` |
+| CSS 类前缀 | `fdiff-` |
+| 样式去重标签 | `filediff:styles` |
+| Slot id：会话按钮 | `filediff.sessionBtn` |
+| Slot id：diff 面板 | `filediff.panel` |
+| turn 行 | chain 贡献（按 `select` 注册），语义名 `filediff.turnRow` |
+| UI 文案 | 修改 N 个文件 / 全部修改 / 修改记录 |
 
 ## 目录结构
 
@@ -17,59 +34,73 @@ package/
 
 ## 工作原理
 
-- 正式客户端包通过 `package.json` 的 `dsh.client` 声明 + `exports["./client"]` 被发现（`client-modules` 扫描 Loader entries）
-- `lib/client.js` 是 `window.__ModuleLoader__.load({ id, factory })` 闭包工厂：`React` 从模块表 `require("react")` 获取，样式由 `apply` 内的 `ctx.effect` 自管注入（带 `data-plugin-css` 去重标签），随 fiber 停止自动移除
-- 在组合里加一行 `insert`，web 启动时即作为普通客户端插件挂载
+- **会话节点**：在 `uiConversation.events.register` 注册 `kind: 'filediff'` 的节点。`update` 阶段跟踪 `write` / `edit` 工具的调用与结果，把每次成功修改聚合成 `{ seq, path, diffs }`，按轮存进 turn 节点数据（key `filediff`）。
+- **数据来源双通道**：turn 行优先读节点数据；会话级总览从 Trajectory 账本（`eventNodes` + `eventLocations`）用 `collectSessionChanges` 重建同一结构，因此会话总览不依赖实时节点数据。
+- **三个 Slot**：
+  - `conversation.chat.turnTail`（chain，selector `selectFileDiffs`）→「修改 N 个文件」行；
+  - `conversation.session.header.utilities`（list）→「修改记录」按钮；
+  - `shell.overlay`（list）→ 右侧 diff 抽屉（GitHub 风格 + 内置语法高亮 + 可拖拽调宽）。
+- **diff 引擎**：紧凑 LCS（最长公共子序列）；语法高亮为内置 tokenizer（动态插件无法 import 外部模块）。
 
-## 部署步骤（在 ~/.dsh/profiles/web/ 手动执行）
+## 标准方案：以动态 Cordis 插件加到当前 Web
+
+在 DSH 会话中可用动态 Cordis 插件直接挂载同一功能（推荐做法），无需改 profile、无需重启：
+
+```js
+// 参考实现见 docs/dynamic-plugin.client.js
+// 要点（动态插件环境下的标准写法）：
+//   - 直接 return { apply(ctx) { ... } }，不用 __ModuleLoader__ 包装
+//   - React 由环境注入（React.createElement），styles.insert(css) 注入样式
+//   - 不引用 window / document（拖拽改宽用 Pointer Capture 方案）
+//   - 用 ctx.get('uiConversation') / ctx.get('slots') 并做缺失降级
+```
+
+动态插件随进程存活，`cordis_stop` / `cordis_undefine` 即移除，适合开发、验证、临时演示。
+
+## 部署步骤（把本包作为正式客户端包装入 ~/.dsh/profiles/web/）
 
 ### 1. 让 profile 的 Loader 能解析该包
 
-profile 的模块解析经 `C:\Users\Admin\.dsh\profiles\web\node_modules`（由 `healProfileModuleFallback` 从 bundle 依赖闭包填充，只含 bundle 依赖），以及 profile 本地 `.dsh-module-fallback\node_modules`（profile 专属，启动时投影进 `profile/node_modules`）。
+profile 的模块解析经 `%HOME%\.dsh\profiles\web\node_modules`（由 `healProfileModuleFallback` 从 bundle 依赖闭包填充），以及 profile 本地 `.dsh-module-fallback\node_modules`（profile 专属，启动时投影进 `profile/node_modules`）。
 
 **推荐做法 A：加为 profile 依赖（最标准）**
 
-在 `C:\Users\Admin\.dsh\profiles\web\package.json` 的 `dependencies` 加：
+在 `%HOME%\.dsh\profiles\web\package.json` 的 `dependencies` 加：
 
 ```json
-"@deepseek-ai/dsh-client-ui-file-diff-timeline": "file:D:/works/dsh/dsh-file-diff/plugins/fdiff-file-diff-timeline/package"
+"dsh-file-diff": "file:dsh-file-diff"
 ```
 
-然后在该目录执行（`dsh plugin add` 也可，但 `file:` 依赖更直接）：
+然后在该目录执行：
 
 ```sh
-cd C:\Users\Admin\.dsh\profiles\web
+cd %HOME%\.dsh\profiles\web
 pnpm install
 ```
-
-这会把它链接进 `profiles/web/node_modules/@deepseek-ai/`。
 
 **做法 B：手动 junction（不装依赖）**
 
 ```sh
 # 在 profile 本地回退目录建作用域
-mkdir C:\Users\Admin\.dsh\profiles\web\.dsh-module-fallback\node_modules\@deepseek-ai
+mkdir %HOME%\.dsh\profiles\web\.dsh-module-fallback\node_modules\@deepseek-ai
 # junction 指向包目录
-mklink /J C:\Users\Admin\.dsh\profiles\web\.dsh-module-fallback\node_modules\@deepseek-ai\dsh-client-ui-file-diff-timeline ^
-  D:\works\dsh\dsh-file-diff\plugins\fdiff-file-diff-timeline\package
+mklink /J %HOME%\.dsh\profiles\web\.dsh-module-fallback\node_modules\dsh-file-diff ^
+ dsh-file-diff
 ```
-
-启动时 `healProfileModuleFallback` 会把它投影到 `profiles/web/node_modules/@deepseek-ai/`。
 
 ### 2. 在 profile 组合加一行
 
-编辑 `C:\Users\Admin\.dsh\profiles\web\cordis.patch.yml`，追加：
+编辑 `%HOME%\.dsh\profiles\web\cordis.patch.yml`，追加：
 
 ```yaml
 - insert:
-    - id: ui-file-diff-timeline
-      name: '@deepseek-ai/dsh-client-ui-file-diff-timeline'
+    - id: filediff-overview
+      name: 'filediff-overview'
 ```
 
-`patchReload: live` —— 但**新增包名需要 Loader 在启动时解析**（模块链接步骤 1 也要在启动前就位），所以完成后**重启 dsh web 进程**最稳：
+新增包名需要 Loader 在启动时解析（模块链接步骤 1 也要在启动前就位），完成后**重启 dsh web 进程**最稳：
 
 ```sh
-# 停止当前 web（Ctrl+C 或结束进程），然后重新启动 profile
 dsh web --profile web
 ```
 
@@ -85,9 +116,3 @@ dsh web --profile web
 - 删除 `cordis.patch.yml` 里加的 `insert` 块
 - 移除 `package.json` 里的依赖（或删除 junction）
 - 重启 web
-
-## 与动态插件（fdiff-1）的关系
-
-- `fdiff-1/pkg-1..5` 是会话内动态插件，进程重启即丢失，仅用于开发调试
-- 本包是同一代码的正式形态：功能完全一致，但随 profile 组合每次启动自动加载
-- 动态插件仍运行时不冲突（注册同名 slot 时按 priority 竞争；正式包 priority −1 会优先）

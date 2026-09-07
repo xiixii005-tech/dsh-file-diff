@@ -1,6 +1,6 @@
 {
   "name": "dsh-file-diff",
-  "description": "Codex-style file-change timeline: modified files per turn and their diffs in a right-side panel (GitHub-style + syntax highlight).",
+  "description": "File Diff Overview (filediff): per-turn modified files and their diffs in a right-side panel",
   "version": "0.1.0",
   "private": true,
   "type": "module",
