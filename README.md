@@ -140,17 +140,6 @@ npm run build     # 重新生成 lib/client.js
   - `shell.overlay`（list）→ 右侧 diff 抽屉（GitHub 风格 + 内置语法高亮 + 可拖拽调宽）。
 - **diff 引擎**：紧凑 LCS（最长公共子序列）；语法高亮为内置 tokenizer（动态插件无法 import 外部模块）。
 
-## 标准方案：以动态 Cordis 插件加到当前 Web
-
-在 DSH 会话中可用动态 Cordis 插件直接挂载同一功能（如本会话的 `fdiff-1`，pkg-2），无需改 profile、无需重启。动态插件逻辑与 `lib/client.template.js` 一致，仅按动态插件环境做标准适配：
-
-- 直接 `return { apply(ctx) { ... } }`，不用 `__ModuleLoader__` 包装
-- React 由环境注入（`React.createElement`），`styles.insert(css)` 注入样式
-- 不引用 `window` / `document`（拖拽改宽用 Pointer Capture 方案）
-- 用 `ctx.get('uiConversation')` / `ctx.get('slots')` 并做缺失降级
-
-动态插件随进程存活，`cordis_stop` / `cordis_undefine` 即移除，适合开发、验证、临时演示。
-
 ### 常见错误排查
 
 - **`client-modules: bundle ... loaded without registering "dsh-file-diff"`**
