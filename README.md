@@ -121,13 +121,13 @@ pnpm 会以链接形式把它放进 `profiles/web/node_modules/dsh-file-diff`（
 直接在 profile 的 node_modules 下建 junction 指向包目录（⚠️ 不是 `.dsh-module-fallback`）：
 
 ```sh
-mklink /J "%HOME%\.dsh\profiles\web\node_modules\dsh-file-diff" "D:\works\dsh\dsh-file-diff"
+mklink /J "%HOME%\.dsh\profiles\web\node_modules\dsh-file-diff" ".\dsh-file-diff"
 ```
 
 **做法 C：直接复制**（能工作，但不受 pnpm 管理、易漂移，不推荐）：
 
 ```sh
-robocopy D:\works\dsh\dsh-file-diff "%HOME%\.dsh\profiles\web\node_modules\dsh-file-diff" /E
+robocopy .\dsh-file-diff "%HOME%\.dsh\profiles\web\node_modules\dsh-file-diff" /E
 ```
 
 ### 2. 在 profile 组合加一行
