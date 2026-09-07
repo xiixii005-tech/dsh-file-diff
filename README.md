@@ -2,91 +2,14 @@
 
 DSH Web 的修改文件总览插件：在每轮会话末尾展示「修改 N 个文件」行（文件 chip 可点开 diff 抽屉），在会话头部提供「修改记录」按钮（会话级文件修改总览）。
 
+------
+
 会话修改文件总览
 ![修改文件](./snapshot/files.png)
 单个文件修改内容
 ![修改内容](./snapshot/fdiff.png)
 
-## 命名
-
-本包所有标识符统一为 `filediff` / `fdiff-` 体系：
-
-| 项 | 值 |
-| --- | --- |
-| 功能名 | File Diff Overview（文件修改总览） |
-| 包名 | `dsh-file-diff` |
-| bundle 注册 id | `dsh-file-diff`（`__ModuleLoader__.load` 必须用包名，client-modules 按它校验） |
-| 组合行 id | `filediff-overview`（仅 cordis 组合内的行标识，可任意） |
-| 会话节点 kind / turn 数据 key | `filediff` |
-| CSS 类前缀 | `fdiff-` |
-| 样式去重标签 | `filediff:styles` |
-| Slot id：会话按钮 | `filediff.sessionBtn` |
-| Slot id：diff 面板 | `filediff.panel` |
-| turn 行 | chain 贡献（按 `select` 注册），语义名 `filediff.turnRow` |
-| UI 文案 | 修改 N 个文件 / 全部修改 / 修改记录 |
-
-## 目录结构
-
-```
-package/
-├── package.json              # name + dsh.client 声明 + exports["./client"] + scripts.build
-├── scripts/
-│   └── build-client.mjs      # 构建：lib/styles.css + lib/client.template.js → lib/client.js
-└── lib/
-    ├── styles.css            # ★ 样式唯一源（手动调整这里，纯 CSS 无需转义）
-    ├── client.template.js    # ★ 应用逻辑模板（含 __PLUGIN_CSS__ 占位）
-    ├── client.js             # 部署产物（GENERATED，由 npm run build 生成，勿手改）
-    ├── index.js              # node half 占位（纯客户端插件，host 逻辑为空）
-    └── types/                # 类型占位
-```
-
-`lib/client.js` 由 `npm run build` 从 `lib/styles.css` + `lib/client.template.js` 生成；产物保持 `__ModuleLoader__.load({ id: "dsh-file-diff" })` 格式，与 ui-deliverables 同构，`apply` 内 `ctx.get('uiConversation')` / `ctx.get('slots')` 在缺失时安全降级。
-
-## 手动调整样式（改样式工作流）
-
-样式**唯一源**是 `lib/styles.css`（纯 CSS，直接编辑，无需转义）。改完运行：
-
-```sh
-npm run build     # 重新生成 lib/client.js
-```
-
-- `link:` 部署（推荐）：junction 直连工作区，构建后**重启 web 即生效**，无需重装依赖。
-- `file:` 部署：pnpm 在安装时快照副本，构建后需 `pnpm install --force` 重新同步再重启。
-
-当前主要配色在 `lib/styles.css` 中：
-
-| 位置 | 选择器 | 值 |
-| --- | --- | --- |
-| 字符串 token | `.fdiff-tok-string` | `#2d7747` |
-| 数字 token | `.fdiff-tok-number` | `#ad7311` |
-| diff 抽屉背景 | `.fdiff-panel` | `#ffffff` |
-| 增/删行底色 | `.fdiff-add td` / `.fdiff-del td` | `color-mix(...)` |
-| 关键字色 | `.fdiff-tok-keyword` | `var(--dsw-alias-brand-primary)` |
-
-> 不要直接改 `lib/client.js`（GENERATED，会被下次 build 覆盖）；调整逻辑改 `lib/client.template.js`。
-
-## 工作原理
-
-- **会话节点**：在 `uiConversation.events.register` 注册 `kind: 'filediff'` 的节点。`update` 阶段跟踪 `write` / `edit` 工具的调用与结果，把每次成功修改聚合成 `{ seq, path, diffs }`，按轮存进 turn 节点数据（key `filediff`）。
-- **数据来源双通道**：turn 行优先读节点数据；会话级总览从 Trajectory 账本（`eventNodes` + `eventLocations`）用 `collectSessionChanges` 重建同一结构，因此会话总览不依赖实时节点数据。
-- **三个 Slot**：
-  - `conversation.chat.turnTail`（chain，selector `selectFileDiffs`）→「修改 N 个文件」行；
-  - `conversation.session.header.utilities`（list）→「修改记录」按钮；
-  - `shell.overlay`（list）→ 右侧 diff 抽屉（GitHub 风格 + 内置语法高亮 + 可拖拽调宽）。
-- **diff 引擎**：紧凑 LCS（最长公共子序列）；语法高亮为内置 tokenizer（动态插件无法 import 外部模块）。
-
-## 标准方案：以动态 Cordis 插件加到当前 Web
-
-在 DSH 会话中可用动态 Cordis 插件直接挂载同一功能（如本会话的 `fdiff-1`，pkg-2），无需改 profile、无需重启。动态插件逻辑与 `lib/client.template.js` 一致，仅按动态插件环境做标准适配：
-
-- 直接 `return { apply(ctx) { ... } }`，不用 `__ModuleLoader__` 包装
-- React 由环境注入（`React.createElement`），`styles.insert(css)` 注入样式
-- 不引用 `window` / `document`（拖拽改宽用 Pointer Capture 方案）
-- 用 `ctx.get('uiConversation')` / `ctx.get('slots')` 并做缺失降级
-
-动态插件随进程存活，`cordis_stop` / `cordis_undefine` 即移除，适合开发、验证、临时演示。
-
-## 部署步骤（把本包作为正式客户端包装入 ~/.dsh/profiles/web/）
+## 安装步骤（把本包作为正式客户端包装入 ~/.dsh/profiles/web/）
 
 ### 1. 让 profile 的 Loader 能解析该包
 
@@ -166,6 +89,67 @@ dsh web --profile web
 - 点击文件 chip → 右侧出现 diff 抽屉（GitHub 风格 + 语法高亮 + 可拖拽调宽）
 - 头部「修改记录」按钮 → 会话级修改总览
 - 检查浏览器控制台无 `client-modules` 组合错误；若包未解析会有 `client-modules: 1 client package failed to compose` 之类报错
+
+## 目录结构
+
+```
+package/
+├── package.json              # name + dsh.client 声明 + exports["./client"] + scripts.build
+├── scripts/
+│   └── build-client.mjs      # 构建：lib/styles.css + lib/client.template.js → lib/client.js
+└── lib/
+    ├── styles.css            # ★ 样式唯一源（手动调整这里，纯 CSS 无需转义）
+    ├── client.template.js    # ★ 应用逻辑模板（含 __PLUGIN_CSS__ 占位）
+    ├── client.js             # 部署产物（GENERATED，由 npm run build 生成，勿手改）
+    ├── index.js              # node half 占位（纯客户端插件，host 逻辑为空）
+    └── types/                # 类型占位
+```
+
+`lib/client.js` 由 `npm run build` 从 `lib/styles.css` + `lib/client.template.js` 生成；产物保持 `__ModuleLoader__.load({ id: "dsh-file-diff" })` 格式，与 ui-deliverables 同构，`apply` 内 `ctx.get('uiConversation')` / `ctx.get('slots')` 在缺失时安全降级。
+
+## 手动调整样式（改样式工作流）
+
+样式**唯一源**是 `lib/styles.css`（纯 CSS，直接编辑，无需转义）。改完运行：
+
+```sh
+npm run build     # 重新生成 lib/client.js
+```
+
+- `link:` 部署（推荐）：junction 直连工作区，构建后**重启 web 即生效**，无需重装依赖。
+- `file:` 部署：pnpm 在安装时快照副本，构建后需 `pnpm install --force` 重新同步再重启。
+
+当前主要配色在 `lib/styles.css` 中：
+
+| 位置 | 选择器 | 值 |
+| --- | --- | --- |
+| 字符串 token | `.fdiff-tok-string` | `#2d7747` |
+| 数字 token | `.fdiff-tok-number` | `#ad7311` |
+| diff 抽屉背景 | `.fdiff-panel` | `#ffffff` |
+| 增/删行底色 | `.fdiff-add td` / `.fdiff-del td` | `color-mix(...)` |
+| 关键字色 | `.fdiff-tok-keyword` | `var(--dsw-alias-brand-primary)` |
+
+> 不要直接改 `lib/client.js`（GENERATED，会被下次 build 覆盖）；调整逻辑改 `lib/client.template.js`。
+
+## 工作原理
+
+- **会话节点**：在 `uiConversation.events.register` 注册 `kind: 'filediff'` 的节点。`update` 阶段跟踪 `write` / `edit` 工具的调用与结果，把每次成功修改聚合成 `{ seq, path, diffs }`，按轮存进 turn 节点数据（key `filediff`）。
+- **数据来源双通道**：turn 行优先读节点数据；会话级总览从 Trajectory 账本（`eventNodes` + `eventLocations`）用 `collectSessionChanges` 重建同一结构，因此会话总览不依赖实时节点数据。
+- **三个 Slot**：
+  - `conversation.chat.turnTail`（chain，selector `selectFileDiffs`）→「修改 N 个文件」行；
+  - `conversation.session.header.utilities`（list）→「修改记录」按钮；
+  - `shell.overlay`（list）→ 右侧 diff 抽屉（GitHub 风格 + 内置语法高亮 + 可拖拽调宽）。
+- **diff 引擎**：紧凑 LCS（最长公共子序列）；语法高亮为内置 tokenizer（动态插件无法 import 外部模块）。
+
+## 标准方案：以动态 Cordis 插件加到当前 Web
+
+在 DSH 会话中可用动态 Cordis 插件直接挂载同一功能（如本会话的 `fdiff-1`，pkg-2），无需改 profile、无需重启。动态插件逻辑与 `lib/client.template.js` 一致，仅按动态插件环境做标准适配：
+
+- 直接 `return { apply(ctx) { ... } }`，不用 `__ModuleLoader__` 包装
+- React 由环境注入（`React.createElement`），`styles.insert(css)` 注入样式
+- 不引用 `window` / `document`（拖拽改宽用 Pointer Capture 方案）
+- 用 `ctx.get('uiConversation')` / `ctx.get('slots')` 并做缺失降级
+
+动态插件随进程存活，`cordis_stop` / `cordis_undefine` 即移除，适合开发、验证、临时演示。
 
 ### 常见错误排查
 
