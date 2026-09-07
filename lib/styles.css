@@ -97,7 +97,13 @@
 .fdiff-file-stats { margin-left: auto; flex: none; font-size: 11px; }
 .fdiff-file-stats .add { color: var(--dsw-alias-state-success-primary); margin-right: 6px; }
 .fdiff-file-stats .del { color: var(--dsw-alias-state-error-primary); }
-.fdiff-diff { width: 100%; border-collapse: collapse; table-layout: fixed; }
+/* ---- single horizontal scrollbar for the whole diff table ---- */
+.fdiff-diff-scroll { overflow-x: auto; }
+.fdiff-diff-scroll::-webkit-scrollbar { height: 6px; }
+.fdiff-diff-scroll::-webkit-scrollbar-thumb {
+  background: var(--dsw-alias-border-l2); border-radius: 3px;
+}
+.fdiff-diff { width: max-content; min-width: 100%; border-collapse: collapse; }
 .fdiff-diff td { vertical-align: top; }
 .fdiff-line td { padding: 0; height: 1.5em; }
 .fdiff-ln {
@@ -112,14 +118,7 @@
 }
 .fdiff-code {
   padding: 0 10px 0 0; color: var(--dsw-alias-label-primary);
-}
-.fdiff-code-scroll {
-  overflow-x: auto; white-space: pre;
-  padding-left: 10px;
-}
-.fdiff-code-scroll::-webkit-scrollbar { height: 6px; }
-.fdiff-code-scroll::-webkit-scrollbar-thumb {
-  background: var(--dsw-alias-border-l2); border-radius: 3px;
+  white-space: pre;
 }
 .fdiff-sign { display: inline-block; width: 1ch; user-select: none; color: var(--dsw-alias-label-secondary); }
 .fdiff-same td { background: transparent; }
