@@ -100,9 +100,16 @@ npm run build     # 重新生成 lib/client.js
 在 `%HOME%\.dsh\profiles\web\package.json` 的 `dependencies` 加（`file:` 路径相对
 profile 目录解析，跨盘建议写绝对路径，注意用正斜杠）：
 
+
+跨盘使用
+```json
+"dsh-file-diff": "link:./dsh-file-diff"
+```
+
 ```json
 "dsh-file-diff": "file:./dsh-file-diff"
 ```
+
 
 > 想「改完 `npm run build` 即生效、无需重装」？把 `file:` 换成 `link:` 即可
 > （pnpm 建 junction 直连工作区，见「手动调整样式」一节）。`file:` 跨盘是安装时快照，需 `pnpm install --force` 重新同步。
