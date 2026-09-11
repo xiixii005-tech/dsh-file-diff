@@ -1,3 +1,18 @@
+/* File Diff Overview styles — style single source (see README).
+   Syntax token colors come from the in-plugin tokenizer's fdiff-tok-* classes
+   (pure plugin; the harness's shared shiki highlighter is not modified).
+   The overlay drawer styles (.fdiff-panel, resize handle, close) were removed
+   when the UI moved into the right Sidebar tab. */
+.fdiff-tab {
+  display: flex; flex-direction: column; gap: 12px;
+  height: 100%; overflow: auto;
+  padding: 10px 14px;
+}
+.fdiff-empty {
+  color: var(--dsw-alias-label-secondary); font-size: 13px;
+  justify-content: center; align-items: center;
+}
+
 .fdiff-row {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   padding: 4px 12px; font-size: 12px;
@@ -37,43 +52,6 @@
   display: inline-flex;
 }
 .fdiff-session-btn:hover { border-color: var(--dsw-alias-brand-primary); color: var(--dsw-alias-brand-primary); }
-.fdiff-panel {
-  position: fixed; top: 0; right: 0; bottom: 0;
-  width: min(640px, 54vw); min-width: 320px;
-  background: #ffffff;
-  border-left: 1px solid var(--dsw-alias-border-l1);
-  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.15);
-  z-index: 1000; display: flex; flex-direction: column;
-  pointer-events: auto;
-}
-.fdiff-resize-handle {
-  position: absolute; left: -5px; top: 0; bottom: 0;
-  width: 10px; cursor: ew-resize; z-index: 1;
-  touch-action: none;
-}
-.fdiff-resize-handle::after {
-  content: ''; position: absolute; left: 3px; top: 0; bottom: 0;
-  width: 2px; border-radius: 1px; transition: background 0.15s;
-  background: transparent;
-}
-.fdiff-resize-handle:hover::after,
-.fdiff-resize-handle:active::after {
-  background: var(--dsw-alias-brand-primary);
-}
-.fdiff-panel-header {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  padding: 10px 14px; border-bottom: 1px solid var(--dsw-alias-border-l1);
-}
-.fdiff-panel-title {
-  font-weight: 600; font-size: 13px; color: var(--dsw-alias-label-primary);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.fdiff-close {
-  font: inherit; cursor: pointer; border: none; background: transparent;
-  color: var(--dsw-alias-label-secondary); font-size: 14px; padding: 2px 6px;
-}
-.fdiff-close:hover { color: var(--dsw-alias-label-primary); }
-.fdiff-panel-body { flex: 1; overflow: auto; padding: 10px 14px; }
 
 /* ---- GitHub-style unified diff ---- */
 .fdiff-file-block {
@@ -140,13 +118,27 @@
 }
 .fdiff-add .fdiff-code { border-left: 2px solid var(--dsw-alias-state-success-primary); }
 
-/* ---- syntax token colors (highlight.js / shiki-like) ---- */
+/* ---- syntax token colors (in-plugin tokenizer) ---- */
 .fdiff-tok-plain { color: var(--dsw-alias-label-primary); }
 .fdiff-tok-comment { color: var(--dsw-alias-label-secondary); font-style: italic; }
 .fdiff-tok-string { color: #2d7747; }
 .fdiff-tok-number { color: #ad7311; }
 .fdiff-tok-keyword { color: var(--dsw-alias-brand-primary); font-weight: 500; }
 .fdiff-tok-function { color: var(--dsw-alias-brand-primary); }
+
+/* ---- plugin-owned Godot file preview (gd/gdshader/gdresource) ---- */
+.fdiff-preview {
+  font-family: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+  font-size: 12px; line-height: 1.5;
+  padding: 8px 0;
+}
+.fdiff-preview-line { display: flex; }
+.fdiff-preview-ln {
+  flex: none; width: 44px; text-align: right; padding: 0 8px;
+  user-select: none; font-size: 10px; color: var(--dsw-alias-label-secondary);
+}
+.fdiff-preview-code { white-space: pre; color: var(--dsw-alias-label-primary); }
+.fdiff-preview[data-wrap="on"] .fdiff-preview-code { white-space: pre-wrap; word-break: break-all; }
 
 .fdiff-session { display: flex; flex-direction: column; gap: 10px; }
 .fdiff-turn-title { font-weight: 600; font-size: 12px; color: var(--dsw-alias-label-secondary); margin-bottom: 4px; }
@@ -164,5 +156,5 @@
 }
 .fdiff-file-meta .add { color: var(--dsw-alias-state-success-primary); }
 .fdiff-file-meta .del { color: var(--dsw-alias-state-error-primary); }
-.fdiff-back { font: inherit; cursor: pointer; align-self: flex-start; border: none; background: transparent; color: var(--dsw-alias-label-secondary); }
+.fdiff-back { font: inherit; cursor: pointer; flex: none; border: none; background: transparent; color: var(--dsw-alias-label-secondary); }
 .fdiff-back:hover { color: var(--dsw-alias-brand-primary); }
