@@ -5,9 +5,9 @@ DSH Web 的修改文件总览插件：在每轮会话末尾展示「修改 N 个
 ------
 
 会话修改文件总览
-![修改文件](./snapshot/files.png)
+![修改文件](./snapshot/files_1.png)
 单个文件修改内容（右侧边栏 tab）
-![修改内容](./snapshot/fdiff.png)
+![修改内容](./snapshot/fdiff_1.png)
 
 ## 安装步骤（把本包作为正式客户端包装入 ~/.dsh/profiles/web/）
 
